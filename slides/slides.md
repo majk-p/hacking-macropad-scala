@@ -68,29 +68,29 @@ themeConfig:
 A macropad is a small programmable keyboard designed for custom shortcuts and controls, but it only becomes useful once properly programmed. When vendor software is untrustworthy or limited, getting it to work can be a real challenge. I’ll show you how Scala Native and fs2 provide a safe, flexible way to take full control of the device
 
 
-Cool, now a short abstract. Here are the points I'll roughly go by: 
-- I got a small present - macropad keyboard 
-- First thought - sounds cool, I could do a bunch of stuff with it, maybe use as light dimmer for smarthome? 
-- But it comes from an unknown source, so let's make sure its safe. I'll show pictures of how I dissasembled the hardware looking for suspicious electronic 
-- Electronic looks clear, let's program it 
-- The manufacturer only provides an exe and says I should give it antivirus exception 
-- not gonna trust that 
-- I've tried using oss alternative software, even forked some, but no joy supporting my particular device 
-- Resolution: use ioctl to grab the device on Linux system level, exclusively consume the key events and bind them to some actions 
-- I wrote a library and a program in Scala Native that utilizes both low level ioctl apis as well as fs2 for program design 
-- Keypad can be programmed as I wanted 
+Cool, now a short abstract. Here are the points I'll roughly go by:
+- I got a small present - macropad keyboard
+- First thought - sounds cool, I could do a bunch of stuff with it, maybe use as light dimmer for smarthome?
+- But it comes from an unknown source, so let's make sure its safe. I'll show pictures of how I dissasembled the hardware looking for suspicious electronic
+- Electronic looks clear, let's program it
+- The manufacturer only provides an exe and says I should give it antivirus exception
+- not gonna trust that
+- I've tried using oss alternative software, even forked some, but no joy supporting my particular device
+- Resolution: use ioctl to grab the device on Linux system level, exclusively consume the key events and bind them to some actions
+- I wrote a library and a program in Scala Native that utilizes both low level ioctl apis as well as fs2 for program design
+- Keypad can be programmed as I wanted
 - profit
 
 -->
 
---- 
+---
 layout: cover
 background: /macropads.png
 ---
 
 # Macropads
 
---- 
+---
 layout: two-cols-header
 ---
 
@@ -112,7 +112,7 @@ layout: two-cols-header
 
 </v-clicks>
 
---- 
+---
 layout: two-cols-header
 ---
 
@@ -132,7 +132,7 @@ layout: two-cols-header
 
 <img class="w-80" alt="" src="./macropad.png" />
 
---- 
+---
 layout: two-cols-header
 ---
 
@@ -164,7 +164,7 @@ background: suspicious.jpg
 
 Let's disassemble this thing
 
---- 
+---
 layout: two-cols-header
 ---
 
@@ -225,7 +225,7 @@ layout: center
 
 <img class="h-100" alt="" src="./family-guy.gif" />
 
-<!-- 
+<!--
 
 Numerous issues, but the biggest issue was the fact that particular keyboard can come with various device-id & vendor-id, meaning that programming it needs different set of commands sent to the device.
 
@@ -236,27 +236,168 @@ This breaks the rule of not using the sus software though
  -->
 
 ---
+layout: center
+---
 
-# Detect the macropad 
+# Different approach
 
+---
+layout: two-cols-header
+---
+
+# Different approach
+
+::left::
+
+<img class="w-100" alt="" src="./what-if-i-told-you.jpg" />
+
+::right::
+
+- Mapping the keys was never necessary
+<v-clicks>
+
+- We could just have a program that reacts directly to the keyboard input events
+- And make the system ignore the input everywhere else outside our program
+
+</v-clicks>
+
+
+---
+
+# Meet `EVIOCGRAB`!
+
+From the Linux Input Subsystem
+
+> input handle that currently has the device grabbed (via EVIOCGRAB ioctl). When a handle grabs a device it becomes sole recipient for all input events coming from the device
+
+
+Source: https://www.kernel.org/doc/html/latest/driver-api/input.html
+
+---
+
+# Grabbing device with `ioctl`
+
+```cpp
+int grab = 1;
+ioctl(fd, EVIOCGRAB, &grab);
 ```
-lsusb > /tmp/devices-before
-lsusb > /tmp/devices-after
-diff /tmp/devices-before /tmp/devices-after
+
+Where `fd` is the file descriptor
+
+---
+
+# Find the right file 🕵️
+
+First we need to find the device ID 
+
+```diff
+$ lsusb > /tmp/devices-before # run this before plugging the keyboard
+$ lsusb > /tmp/devices-after  # run when keyboard has been plugged
+$ diff /tmp/devices-before /tmp/devices-after
+20a21
+> Bus 003 Device 013: ID 514c:8851 c̪USB Keyboardȉ USB Keyboardȉ
 ```
+
+<v-click>
+
+**Found it!**
+
+</v-click>
+
+---
+background: bond.jpg
+---
+
+<div class="absolute top-30 right-8 text-right text-5xl">
+  They call me Keyboardȉ
+</div>
+
+<div class="absolute bottom-60 right-8 text-right text-3xl">
+  c̪USB Keyboardȉ USB Keyboardȉ
+</div>
 
 ---
 
 # Detect the macropad
 
+```
+$ lsusb -d 514c:8851 -v
+Bus 003 Device 016: ID 514c:8851 c̪USB Keyboardȉ USB Keyboardȉ
+Device Descriptor:
+  bLength                18
+  bDescriptorType         1
+  bcdUSB               1.10
+  bDeviceClass            0 [unknown]
+  bDeviceSubClass         0 [unknown]
+  bDeviceProtocol         0
+  bMaxPacketSize0        64
+  idVendor           0x514c c̪USB Keyboardȉ
+  idProduct          0x8851 USB Keyboardȉ
+  bcdDevice            1.00
+  iManufacturer           1 c̪USB Keyboardȉ
+  iProduct                2 USB Keyboardȉ
+  iSerial                 3 433132303333372E
+  bNumConfigurations      1
+  Configuration Descriptor:
+    bLength                 9
+    bDescriptorType         2
+    wTotalLength       0x0042
+```
+
+---
+
+# Detect the input device
+
+<!-- The /dev/input directory in Linux contains device files for various input devices like keyboards, mice, and joysticks, allowing the system to interact with these peripherals  -->
+
+Now let's find the file that represents the input events
+
+
+
+
+<!-- 
+Or if you like oneliners
+
+```ts
+VENDOR="514c"; PRODUCT="8851"; for ev in /dev/input/event*; do udevadm info -q property -n "$ev" | grep -q "ID_VENDOR_ID=${VENDOR}" && udevadm info -q property -n "$ev" | grep -q "ID_MODEL_ID=${PRODUCT}" && echo "$ev"; done
+``` -->
+
+<!-- VENDOR="514c"; PRODUCT="8851"; for ev in /dev/input/event*; do udevadm info -q property -n "$ev" | grep -q "ID_VENDOR_ID=${VENDOR}" && udevadm info -q property -n "$ev" | grep -q "ID_MODEL_ID=${PRODUCT}" && echo "$ev"; done -->
+
+
+```shell
+VENDOR="514c"
+PRODUCT="8851"
+for ev in /dev/input/event*; do
+  props=$(udevadm info -q property -n "$ev")
+  if echo "$props" | grep -q "ID_VENDOR_ID=${VENDOR}" && \
+     echo "$props" | grep -q "ID_MODEL_ID=${PRODUCT}"; then
+    echo "$ev"
+  fi
+done
+```
+
+This produces
 
 ```
-$ lsusb -d 514c:8851 -v  
-Bus 003 Device 013: ID 514c:8851 c̪USB Keyboardȉ USB Keyboardȉ
-...
+/dev/input/event11
+/dev/input/event12
 ```
 
+---
+layout: center
+---
 
+# The fun begins
+
+---
+
+todo - code walkthrough 
+
+1. Scala native hello world is very simple
+2. High level code is more convenient for working with events so I'll use fs2
+3. The Grabber class will handle the low level part
+4. Fs2 stream will orchestrate the logic handling the events
 
 ---
 layout: two-cols-header
@@ -272,9 +413,7 @@ class: "outro-slide"
 ::right::
 
 
-<br/>
-
-## Michał Pawlik
+## Stay in touch! ✉️
 
 <logos-bluesky mt-2/> [@michal.pawlik.dev](https://bsky.app/profile/michal.pawlik.dev)<br/>
 <grommet-icons-blog/> [blog.michal.pawlik.dev](https://blog.michal.pawlik.dev)

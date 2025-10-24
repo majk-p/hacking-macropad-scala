@@ -10,6 +10,8 @@ export default defineShikiSetup((): ShikiSetupReturn => {
         },
         langs: [
             "scala",
+            "cpp",
+            "shell",
             "diff",
             {
                 ...smithy,
