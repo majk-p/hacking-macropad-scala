@@ -1,0 +1,93 @@
+@import url(https://tools-static.wmflabs.org/fontcdn/css?family=Black+Han+Sans);
+
+h1, h2, h3 {
+  font-family: 'Black Han Sans', sans-serif
+}
+
+.slidev-layout h1 > code {
+    color: #eee;
+}
+
+div pre.slidev-code {
+    background-color: #eeeeee;
+}
+
+.slidev-layout strong {
+    font-weight: 900;
+    /* removing this because it messes with the windows XP wallpaper slide
+    and the default on light backgrounds isn't that far off.
+    Most importantly it remains set in mermaid due to the rules below
+    */
+    /* color: #222; */
+}
+
+.slidev-layout .mermaid strong {
+    color: #222 !important;
+}
+
+.slidev-note {
+    color: yellow !important;
+    opacity: 1 !important;
+}
+
+/* code:before, code:after {
+    content: '' !important;
+} */
+
+.two-cols-header {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr) !important;
+  grid-template-rows: auto 1fr auto !important; /* header height auto, content fills, bottom auto */
+
+  h1 {
+    display: inline-block;
+    padding: 0.25em;
+    position: relative;
+    margin-bottom: 1em;
+    z-index: 1;
+
+    &::before {
+      box-shadow: var(--slidev-theme-header-shadow);
+      content: " ";
+      display: block;
+      position: absolute;
+      width: calc(100%);
+      height: calc(100%);
+      margin-left: -0.25em;
+      margin-top: -0.25em;
+      z-index: -1;
+      transform: rotate(-1deg);
+    }
+
+    color: var(--slidev-theme-default-headingColor);
+
+    &::before {
+      background: var(--slidev-theme-default-headingBg);
+    }
+  }
+
+}
+
+.intro-slide, .outro-slide {
+    text-align: center;
+
+    img {
+        margin: 0 auto
+    }
+}
+
+html, body, #app, #page-root {
+  font-family: "Avenir Next LT Pro",
+               "Lexend Mega",
+               "Frutiger-Condensed",
+               "Avenir Next",
+               "Ubuntu",
+               "Nunito Sans",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji",
+               "Segoe UI Emoji",
+               "Segoe UI Symbol",
+               "Noto Color Emoji";
+}
+
+#siriusxm-slide * {
+  background: white;
+}
