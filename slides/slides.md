@@ -9,7 +9,7 @@ drawings:
   persist: true
 transition: none
 mdc: true
-background: /pexels-roller-coaster.jpg
+background: /background.jpg
 themeConfig:
   # Base colors - warm cream palette
   color: "#2C3E50"                    # Dark blue-gray for main text
@@ -60,6 +60,8 @@ themeConfig:
   code-font-size: "1.2em"
 ---
 
+<link href='https://tools-static.wmflabs.org/fontcdn/css?family=Black+Han+Sans' rel='stylesheet' type='text/css'>
+
 # Hacking Macropads with Scala Native
 
 <!--
@@ -102,46 +104,136 @@ layout: two-cols-header
 
 ::right::
 
-- Automate tasks
+<v-clicks>
+
 - Look fancy
+- Automate tasks
 - No need to remember shortcuts
 
+</v-clicks>
 
+--- 
+layout: two-cols-header
+---
+
+# How it works
+
+::left::
+
+<v-clicks>
+
+1. Connect the device
+2. Use attached software to assign keypress sequence to buttons (e.g. first key sends `CTRL+ ALT +DEL`)
+3. Configure your OS to perform certain actions upon key sequence
+
+</v-clicks>
+
+::right::
+
+<img class="w-80" alt="" src="./macropad.png" />
+
+--- 
+layout: two-cols-header
 ---
 
 # Manufacturer configuration software
 
-https://sikaicase.com/blogs/news/before-software-setting
+<!-- https://sikaicase.com/blogs/news/before-software-setting -->
 
-<!-- Photo of user manual -->
+::left::
+
+<img class="h-80" alt="" src="./user-manual-front.jpg" />
+
+::right::
+
+<img class="w-90" alt="" src="./user-manual-download.jpg" />
 
 ---
 
-# Smells like risk
+# Security warning 😎
 
-Let's disassemble it and look for suspicious hardware
+<img alt="" src="./software-zoom.png" />
 
+
+---
+layout: cover
+background: suspicious.jpg
+---
+
+# Sus
+
+Let's disassemble this thing
+
+--- 
+layout: two-cols-header
 ---
 
 # Disassembly
 
-<!-- Nothing sus -->
+::left::
 
+<img class="h-100" alt="" src="./macropad-dissassembly-1.jpg" />
+
+::right::
+
+<img class="w-150" alt="" src="./macropad-dissassembly-2.jpg" />
+
+
+<v-click>
+
+**looks fine I guess**
+
+</v-click>
+
+---
+background: nothing-to-see.jpg
+---
+
+---
+layout: center
 ---
 
 # Alternative software
 
-### Community tooling alternatives
+---
+layout: two-cols-header
+---
 
-https://github.com/kriomant/ch57x-keyboard-tool
+::left::
 
-https://github.com/kamaaina/macropad_tool
+# Alternative software
 
-https://github.com/rOzzy1987/MacroPad
+Community tooling alternatives
 
-https://www.reddit.com/r/MechanicalKeyboards/comments/17j27ic/i_wrote_a_new_app_for_chinese_macro_keypads/
+* https://www.reddit.com/r/MechanicalKeyboards/comments/17j27ic/i_wrote_a_new_app_for_chinese_macro_keypads/
+* https://github.com/kriomant/ch57x-keyboard-tool
+* https://github.com/kamaaina/macropad_tool
+* https://github.com/rOzzy1987/MacroPad
 
-<!-- including photo of supported keyboard -->
+::right::
+<img class="h-120" alt="" src="./reddit-thread.png" />
+
+---
+layout: center
+---
+
+# Let's try it! 🧐
+
+---
+
+# Me trying to use community alternatives
+
+<img class="h-100" alt="" src="./family-guy.gif" />
+
+<!-- 
+
+Numerous issues, but the biggest issue was the fact that particular keyboard can come with various device-id & vendor-id, meaning that programming it needs different set of commands sent to the device.
+
+This could be reverse-engineered by installing the windows software, capturing the commands and reflecting them in my alternative.
+
+This breaks the rule of not using the sus software though
+
+ -->
 
 ---
 
