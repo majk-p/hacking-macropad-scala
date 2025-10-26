@@ -793,6 +793,22 @@ Found event: InputEvent(1761481198,466345,1,2,0)
 ```
 
 ---
+layout: two-cols-header
+---
+
+# Macropad4s
+
+::left::
+
+Work in progress code available on GitHub
+
+https://github.com/polyvariant/macropad4s
+
+::right::
+
+![](./repo-qr.png)
+
+---
 
 # Key takeaways
 
@@ -803,6 +819,7 @@ Found event: InputEvent(1761481198,466345,1,2,0)
 * When buying a macropad do your research 🕵️
 
 </v-clicks>
+
 
 ---
 layout: two-cols-header
