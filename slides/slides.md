@@ -312,9 +312,13 @@ background: bond.jpg
   They call me Keyboardȉ
 </div>
 
+<v-click>
+
 <div class="absolute bottom-60 right-8 text-right text-3xl">
   c̪USB Keyboardȉ USB Keyboardȉ
 </div>
+
+</v-click>
 
 ---
 
@@ -384,20 +388,421 @@ This produces
 /dev/input/event12
 ```
 
+Or something similar, depending on USB port
+
 ---
 layout: center
 ---
 
-# The fun begins
+# The fun begins!
 
 ---
 
+# The fun begins!
+
+
+<!-- 
 todo - code walkthrough 
 
 1. Scala native hello world is very simple
 2. High level code is more convenient for working with events so I'll use fs2
 3. The Grabber class will handle the low level part
-4. Fs2 stream will orchestrate the logic handling the events
+4. Fs2 stream will orchestrate the logic handling the events -->
+
+
+<v-clicks>
+
+1. We know how to block (grab) the device for the rest of the OS
+2. Which file represents the input stream
+
+</v-clicks>
+
+<v-click>
+
+Now it's just the matter of connecting it all together
+
+</v-click>
+
+---
+layout: center
+background: plan.jpg
+---
+
+# The plan
+
+---
+
+# The plan
+
+<v-clicks>
+
+1. Scala Native hello world for a warmup
+2. `Grabber` class to implement the `ioctl(fd, EVIOCGRAB, &grab);` for **capturing device events**
+3. Model the `InputEvent` to read from the `/dev/input/eventN` file
+4. Nice fs2 stream to process the events from file
+
+</v-clicks>
+
+
+---
+
+# Meet Scala Native
+
+```scala
+package org.polyvariant.macropad4s
+//> using platform native
+//> using dep org.typelevel::cats-effect::3.7.0-RC1
+
+import cats.effect.{IO, IOApp, ExitCode}
+
+object App extends IOApp {
+  def run(args: List[String]): IO[ExitCode] = 
+    IO.println("Hello!") *> 
+      IO.pure(ExitCode.Success)
+}
+```
+
+<v-click>
+
+Build with
+
+```shell
+scala --power package .
+```
+
+</v-click>
+
+<v-click>
+
+Produces runnable binary `org.polyvariant.macropad4s.App`
+
+</v-click>
+
+---
+layout: two-cols-header
+---
+
+# Grabber
+
+::left::
+
+Remember him?
+
+```cpp
+int grab = 1;
+ioctl(fd, EVIOCGRAB, &grab);
+```
+
+::right::
+
+
+<v-click>
+
+This is him now
+
+```scala {5-9}{lines: true}
+object Grabber {
+  import scala.scalanative.posix
+  private val EVIOCGRAB: CLongInt = 0x40044590
+
+  def grab(fd: FileDescriptor): IO[Int] = IO.delay {
+    val grabValue = stackalloc[Byte]()  // Allocate space for a CByte
+    !grabValue = 1.toByte // Set the allocated memory to 1
+    posix.sys.ioctl.ioctl(fd.value.get, EVIOCGRAB, grabValue)
+  }
+
+}
+```
+
+</v-click>
+
+---
+
+# Grabber
+
+With release logic
+
+```scala
+object Grabber {
+  import scala.scalanative.posix
+  private val EVIOCGRAB: CLongInt = 0x40044590
+
+  def grab(fileDescriptor: FileDescriptor): IO[Int] = IO.delay {
+    val grabValue = stackalloc[Byte]()  // Allocate space for a CByte
+    !grabValue = 1.toByte  // Set the value of the allocated memory to 1
+    posix.sys.ioctl.ioctl(fileDescriptor.value.get, EVIOCGRAB, grabValue)
+  }
+
+  def release(fileDescriptor: FileDescriptor): IO[Int] = IO.delay {
+    val grabValue = stackalloc[Byte]()  // Allocate space for a CByte
+    !grabValue = 0.toByte  // Set the value of the allocated memory to 0
+    posix.sys.ioctl.ioctl(fileDescriptor.value.get, EVIOCGRAB, grabValue)
+  }
+
+}
+```
+
+---
+
+# Grabber
+
+and a small hack
+
+```scala
+extension (fd: FileDescriptor) {
+  // File descriptor doesn't give access to the int value
+  // but leaks it in toString: FileDescriptor(33, readOnly=true)
+
+  def value: Option[Int] = extractFileDescriptor(fd.toString())
+
+  private def extractFileDescriptor(input: String): Option[Int] = 
+    input.split("FileDescriptor\\(").toList match {
+      case _ :: tail :: Nil => tail.split(", readOnly").headOption.map(_.toInt)
+      case _ => None
+    }
+
+}
+```
+
+---
+
+# Grabber
+
+Now given a file descriptor, wrap the grab logic into resource:
+
+```scala
+object Grabber {
+  /* ... */
+  def resource(fileDescriptor: FileDescriptor): Resource[IO, Int] = 
+    Resource.make(Grabber.grab(fileDescriptor))(_ => Grabber.release(fileDescriptor).void)
+}
+```
+
+---
+
+# The plan
+
+1. ✅ Scala Native hello world for a warmup
+2. ✅ `Grabber` class to implement the `ioctl(fd, EVIOCGRAB, &grab);` for **capturing device events**
+3. 👉 Model the `InputEvent` to read from the `/dev/input/eventN` file
+4. Nice fs2 stream to process the events from file
+
+---
+
+# Event Interface
+
+Quoting https://www.kernel.org/doc/Documentation/input/input.txt
+
+```
+5. Event interface
+~~~~~~~~~~~~~~~~~~
+  (...)  you'll always get a whole number of input events on a read. Their layout is:
+
+struct input_event {
+	struct timeval time;
+	unsigned short type;
+	unsigned short code;
+	unsigned int value;
+};
+
+  'time' is the timestamp ...
+
+  'code' is event code, for example REL_X or KEY_BACKSPACE ...
+
+  'value' is the (...) 0 for EV_KEY for release, 1 for keypress and 2 for autorepeat.
+```
+
+---
+
+# Event Interface
+
+
+```scala {1|9-17|*}{lines: true}
+case class InputEvent(sec: Long, usec: Long, eventType: Int, code: Int, value: Int) {
+  val isKeyPress = eventType == EV_KEY && value == 1
+  val isKeyRelease = eventType == EV_KEY && value == 0 
+}
+
+object InputEvent {
+  val EventSize = 24 // bytes on 64-bit Linux
+ 
+  def fromBytes(bytes: Array[Byte]) = {
+    val buf   = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+    val sec   = buf.getLong()
+    val usec  = buf.getLong()
+    val tpe   = buf.getShort() & 0xffff
+    val code  = buf.getShort() & 0xffff
+    val value = buf.getInt()
+    InputEvent(sec, usec, tpe, code, value)
+  }
+    
+}
+```
+
+---
+
+
+# The plan
+
+1. ✅ Scala Native hello world for a warmup
+2. ✅ `Grabber` class to implement the `ioctl(fd, EVIOCGRAB, &grab);` for **capturing device events**
+3. ✅ Model the `InputEvent` to read from the `/dev/input/eventN` file
+4. 👉 Nice fs2 stream to process the events from file
+
+---
+
+# Read the input file
+
+```scala {5-9|7,11-12|9,14-17,19-20|*}{lines: true}
+object InputReader {
+  import org.polyvariant.macropad4s.InputEvent.EventSize
+
+  /** Open a device file and return its FileDescriptor along with a stream of InputEvents. */
+  def openDevice(path: Path): Resource[IO, (FileDescriptor, Stream[IO, InputEvent])] =
+    for {
+      fis <- fileInputStream(path)
+      fd   = fis.getFD
+    } yield (fd, inputEvents(fis))
+
+  private def fileInputStream(path: Path) =
+    Resource.fromAutoCloseable(IO(new FileInputStream(path.toFile)))
+
+  private def inputEvents(fis: FileInputStream) =
+    rawBytes(fis)
+      .chunkN(EventSize, allowFewer = false)
+      .map(chunk => InputEvent.fromBytes(chunk.toArray))
+
+  private def rawBytes(fis: FileInputStream) =
+    readInputStream(IO.pure(fis), chunkSize = EventSize, closeAfterUse = false)
+}
+```
+
+---
+layout: center
+background: handshake.jpg
+---
+
+# Plan complete
+
+Now join the building blocks together
+
+
+---
+
+# Macropad
+
+```scala {1-3|7-15|*}{lines: true}
+trait Macropad {
+  def grabKeyboardEventsStream: Resource[IO, Stream[IO, InputEvent]]
+}
+
+object Macropad {
+
+  def make(path: String): Macropad = 
+    new Macropad {
+      def grabKeyboardEventsStream: Resource[IO, Stream[IO, InputEvent]] = {
+        for {
+          (fd, stream) <- InputReader.openDevice(Paths.get(path))
+          _            <- Grabber.resource(fd)
+        } yield stream
+      }
+    }
+}
+```
+
+---
+
+# Main application
+
+```scala {3-4|7-17|13|*}{lines: true}
+object App extends IOApp {
+  def run(args: List[String]): IO[ExitCode] = {
+    val defaultPath = "/dev/input/event11"
+    val path = args.headOption.getOrElse(defaultPath)
+
+    IO.println(s"Running keyboard grabber! $args") *>
+      Macropad
+        .make(path)
+        .grabKeyboardEventsStream
+        .use { stream =>
+          stream
+            .evalTap(event => IO.println(s"Found event: $event"))
+            .evalTap(handleEvent)
+            .compile
+            .drain
+        }
+        .as(ExitCode.Success)
+  }
+  /* ... */
+}
+```
+
+---
+
+# Main application
+
+```scala {4-9|12-13,15-16|*}{lines: true}
+object App extends IOApp {
+  def run(args: List[String]): IO[ExitCode] = ???
+
+  private def handleEvent(ev: InputEvent): IO[Unit] = {
+    if (ev.isKeyPress && ev.code == KEY_1)
+      IO.println(s"Got $ev turning vol down") *> volumeDown
+    else if (ev.isKeyPress && ev.code == KEY_3) 
+      IO.println(s"Got $ev turning vol up") *> volumeUp
+    else IO.unit
+  }
+
+  private val volumeUp =
+    runCommand(os.Shellable(List("amixer", "sset", "Master", "5%+")))
+
+  private val volumeDown =
+    runCommand(os.Shellable(List("amixer", "sset", "Master", "5%-")))
+
+  private def runCommand(cmd: os.Shellable): IO[Unit] =
+    IO.delay(os.call(cmd)).void
+}
+```
+
+---
+
+# Run it! 🚀
+
+```scala
+$ sudo -E ./org.polyvariant.macropad4s.App /dev/input/event25
+Running keyboard grabber! List(/dev/input/event25)
+Found event: InputEvent(1761481196,302464,4,4,458756)
+Found event: InputEvent(1761481196,302464,1,30,1)
+Found event: InputEvent(1761481196,302464,0,0,0)
+Found event: InputEvent(1761481196,361474,4,4,458756)
+Found event: InputEvent(1761481196,361474,1,30,0)
+Found event: InputEvent(1761481196,361474,0,0,0)
+Found event: InputEvent(1761481197,808404,4,4,458784)
+Found event: InputEvent(1761481197,808404,1,4,1)
+Got InputEvent(1761481197,808404,1,4,1) turning vol up
+Found event: InputEvent(1761481197,808404,0,0,0)
+Found event: InputEvent(1761481197,825337,4,4,458784)
+Found event: InputEvent(1761481197,825337,1,4,0)
+Found event: InputEvent(1761481197,825337,0,0,0)
+Found event: InputEvent(1761481198,448605,4,4,458782)
+Found event: InputEvent(1761481198,448605,1,2,1)
+Got InputEvent(1761481198,448605,1,2,1) turning vol down
+Found event: InputEvent(1761481198,448605,0,0,0)
+Found event: InputEvent(1761481198,466345,4,4,458782)
+Found event: InputEvent(1761481198,466345,1,2,0)
+```
+
+---
+
+# Key takeaways
+
+* Scala Native is perfect for low level OS integrations
+<v-clicks>
+
+* The ecosystem is mature enough
+* When buying a macropad do your research 🕵️
+
+</v-clicks>
 
 ---
 layout: two-cols-header
