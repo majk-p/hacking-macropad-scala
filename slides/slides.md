@@ -116,14 +116,14 @@ layout: two-cols-header
 layout: two-cols-header
 ---
 
-# How it works
+# Workflow
 
 ::left::
 
 <v-clicks>
 
 1. Connect the device
-2. Use attached software to assign keypress sequence to buttons (e.g. first key sends `CTRL+ ALT +DEL`)
+2. Use provided software to assign keypress sequence to buttons (e.g. first key sends `CTR+ALT+DEL`)
 3. Configure your OS to perform certain actions upon key sequence
 
 </v-clicks>
@@ -184,6 +184,18 @@ layout: two-cols-header
 **looks fine I guess**
 
 </v-click>
+
+<!-- 
+I don't see anything obviously suspicious. Everything appears consistent with a standard USB macropad:
+
+Microcontroller and support ICs
+USB-C connector for data/power
+Three mechanical key switches
+One rotary encoder
+Standard passive components (resistors, capacitors)
+
+Upon connection it reports single HID device, in an isolated environment I've found no suspicious traffic from/to device
+ -->
 
 ---
 background: nothing-to-see.jpg
@@ -268,21 +280,55 @@ layout: two-cols-header
 
 From the Linux Input Subsystem
 
-> input handle that currently has the device grabbed (via EVIOCGRAB ioctl). When a handle grabs a device it becomes sole recipient for all input events coming from the device
+> input handle that currently has the device grabbed (via **EVIOCGRAB** ioctl). When a handle grabs a device it becomes sole recipient for all input events coming from the device
 
 
 Source: https://www.kernel.org/doc/html/latest/driver-api/input.html
+
+---
+layout: center
+---
+
+# Let's see the docs
+
+---
+layout: two-cols-header
+---
+
+# The docs
+
+::left::
+
+<img class="w-100" alt="" src="/EVIOCGRAB-docs-1.png" />
+
+::right::
+
+<v-clicks>
+
+<img class="w-180" alt="" src="/EVIOCGRAB-docs-2.png" />
+
+<img class="w-180" alt="" src="/EVIOCGRAB-docs-3.png" />
+
+</v-clicks>
 
 ---
 
 # Grabbing device with `ioctl`
 
 ```cpp
-int grab = 1;
+int grab = 1; // set grab to true
 ioctl(fd, EVIOCGRAB, &grab);
 ```
 
-Where `fd` is the file descriptor
+<v-clicks>
+
+* `fd` is the file descriptor
+* `EVIOCGRAB` is a predefined kernel constant
+* `&grab` means we are passing the address of value `1` allocated on stack
+
+Let's try to use it
+
+</v-clicks>
 
 ---
 
@@ -290,7 +336,7 @@ Where `fd` is the file descriptor
 
 First we need to find the device ID 
 
-```diff
+```diff {1|2|3|*}
 $ lsusb > /tmp/devices-before # run this before plugging the keyboard
 $ lsusb > /tmp/devices-after  # run when keyboard has been plugged
 $ diff /tmp/devices-before /tmp/devices-after
@@ -381,6 +427,8 @@ for ev in /dev/input/event*; do
 done
 ```
 
+<v-click>
+
 This produces
 
 ```
@@ -389,6 +437,8 @@ This produces
 ```
 
 Or something similar, depending on USB port
+
+</v-click>
 
 ---
 layout: center
@@ -449,7 +499,6 @@ background: plan.jpg
 # Meet Scala Native
 
 ```scala
-package org.polyvariant.macropad4s
 //> using platform native
 //> using dep org.typelevel::cats-effect::3.7.0-RC1
 
@@ -457,8 +506,7 @@ import cats.effect.{IO, IOApp, ExitCode}
 
 object App extends IOApp {
   def run(args: List[String]): IO[ExitCode] = 
-    IO.println("Hello!") *> 
-      IO.pure(ExitCode.Success)
+    IO.println("Hello!").as(ExitCode.Success)
 }
 ```
 
@@ -522,7 +570,7 @@ object Grabber {
 
 With release logic
 
-```scala
+```scala {11-15}{lines: true}
 object Grabber {
   import scala.scalanative.posix
   private val EVIOCGRAB: CLongInt = 0x40044590
@@ -548,7 +596,7 @@ object Grabber {
 
 and a small hack
 
-```scala
+```scala {5|7-11}{lines: true}
 extension (fd: FileDescriptor) {
   // File descriptor doesn't give access to the int value
   // but leaks it in toString: FileDescriptor(33, readOnly=true)
@@ -570,11 +618,13 @@ extension (fd: FileDescriptor) {
 
 Now given a file descriptor, wrap the grab logic into resource:
 
-```scala
+```scala {*}{lines:true}
 object Grabber {
   /* ... */
   def resource(fileDescriptor: FileDescriptor): Resource[IO, Int] = 
-    Resource.make(Grabber.grab(fileDescriptor))(_ => Grabber.release(fileDescriptor).void)
+    Resource.make(
+      Grabber.grab(fileDescriptor)
+    )(_ => Grabber.release(fileDescriptor).void)
 }
 ```
 
@@ -606,9 +656,7 @@ struct input_event {
 };
 
   'time' is the timestamp ...
-
   'code' is event code, for example REL_X or KEY_BACKSPACE ...
-
   'value' is the (...) 0 for EV_KEY for release, 1 for keypress and 2 for autorepeat.
 ```
 
@@ -617,7 +665,7 @@ struct input_event {
 # Event Interface
 
 
-```scala {1|9-17|*}{lines: true}
+```scala {1|9-17|2-3|*}{lines: true}
 case class InputEvent(sec: Long, usec: Long, eventType: Int, code: Int, value: Int) {
   val isKeyPress = eventType == EV_KEY && value == 1
   val isKeyRelease = eventType == EV_KEY && value == 0 
@@ -691,7 +739,7 @@ Now join the building blocks together
 
 # Macropad
 
-```scala {1-3|7-15|*}{lines: true}
+```scala {1-3|8-14}{lines: true}
 trait Macropad {
   def grabKeyboardEventsStream: Resource[IO, Stream[IO, InputEvent]]
 }
@@ -791,6 +839,21 @@ Found event: InputEvent(1761481198,448605,0,0,0)
 Found event: InputEvent(1761481198,466345,4,4,458782)
 Found event: InputEvent(1761481198,466345,1,2,0)
 ```
+
+---
+
+# Stream visualization
+
+For single key press
+
+<img class="w-200" alt="" src="./aquascape-short.png" />
+---
+
+# Stream visualization
+
+Ignored key, then volume down
+
+<img alt="" src="./aquascape-long.png" />
 
 ---
 layout: two-cols-header
