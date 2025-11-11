@@ -83,6 +83,8 @@ Cool, now a short abstract. Here are the points I'll roughly go by:
 
 -->
 
+<!-- Background slide before entering the stage -->
+
 ---
 layout: cover
 background: /macropads.png
@@ -90,11 +92,19 @@ background: /macropads.png
 
 # Macropads
 
+<!-- 
+
+Who knows what a macropad is? show of hands ✋
+
+Recently I got gifted with a macropad, I wanted to see if I can make use of it
+
+ -->
+
 ---
 layout: two-cols-header
 ---
 
-# Macropad
+# Why use Macropad
 
 ::left::
 
@@ -148,21 +158,34 @@ layout: two-cols-header
 
 <img class="w-90" alt="" src="./user-manual-download.jpg" />
 
+<!-- 
+
+For manufacturer software you typically need to look into the manual
+
+Mine was in chinese
+
+I usually don't read them, but since this one contained a link and a QR code I **became extra suspicious**
+
+ -->
+
 ---
 
 # Security warning 😎
 
 <img alt="" src="./software-zoom.png" />
 
+<!-- For the right reasons! -->
 
 ---
 layout: cover
-background: suspicious.jpg
+background: /suspicious.jpg
 ---
 
 # Sus
 
 Let's disassemble this thing
+
+<!-- so I decided I need to make sure it's safe -->
 
 ---
 layout: two-cols-header
@@ -188,17 +211,17 @@ layout: two-cols-header
 <!-- 
 I don't see anything obviously suspicious. Everything appears consistent with a standard USB macropad:
 
-Microcontroller and support ICs
-USB-C connector for data/power
-Three mechanical key switches
-One rotary encoder
-Standard passive components (resistors, capacitors)
+- Poor rotary encoder (knob) soldering to the left
+- USB-C connector for data/power
+- Microcontroller and support ICs
+- Three mechanical key switches
+- Standard passive components (resistors, capacitors)
 
 Upon connection it reports single HID device, in an isolated environment I've found no suspicious traffic from/to device
  -->
 
 ---
-background: nothing-to-see.jpg
+background: /nothing-to-see.jpg
 ---
 
 ---
@@ -225,6 +248,11 @@ Community tooling alternatives
 ::right::
 <img class="h-120" alt="" src="./reddit-thread.png" />
 
+<!-- 
+
+There is a handful of alternatives and reddit threads about the issue
+ -->
+
 ---
 layout: center
 ---
@@ -237,11 +265,15 @@ layout: center
 
 <img class="h-100" alt="" src="./family-guy.gif" />
 
-<!--
+<!-- 
+
+That's the **real life recording** of my attempting to use software from those threads
 
 Numerous issues, but the biggest issue was the fact that particular keyboard can come with various device-id & vendor-id, meaning that programming it needs different set of commands sent to the device.
 
-This could be reverse-engineered by installing the windows software, capturing the commands and reflecting them in my alternative.
+- Identically looking keyboards report as totally different vendor-id/product-id
+- Even after forking and adjusting the software to support ids of my keyboard, the commands for programming the macropad were different
+- I would have to run and reverse-engineer the provided software to first find the right commands, then reproduce that comms in my program (or the forked project)
 
 This breaks the rule of not using the sus software though
 
@@ -280,10 +312,15 @@ layout: two-cols-header
 
 From the Linux Input Subsystem
 
-> input handle that currently has the device grabbed (via **EVIOCGRAB** ioctl). When a handle grabs a device it becomes sole recipient for all input events coming from the device
+> input handle that currently has the device grabbed (via **EVIOCGRAB** ioctl). <br/> When a handle grabs a device it **becomes sole recipient** for all input events coming from the device
 
 
 Source: https://www.kernel.org/doc/html/latest/driver-api/input.html
+
+<!-- 
+
+Linux Input Subsystem allows you (your program) to become the exclusive recipient of input data from a device via **EVIOCGRAB**
+ -->
 
 ---
 layout: center
@@ -311,13 +348,25 @@ layout: two-cols-header
 
 </v-clicks>
 
+
+<!-- Now that's a niche feature -->
+
 ---
 
 # Grabbing device with `ioctl`
 
-```cpp
-int grab = 1; // set grab to true
-ioctl(fd, EVIOCGRAB, &grab);
+```c {7-9}{lines:true}
+#include <fcntl.h>
+#include <unistd.h>
+#include <linux/input.h>
+#include <sys/ioctl.h>
+
+int main() {
+  int fd = open("/dev/input/event0", O_RDONLY);
+  int grab = 1;
+  ioctl(fd, EVIOCGRAB, &grab);
+  // close and return 0
+}
 ```
 
 <v-clicks>
@@ -326,9 +375,22 @@ ioctl(fd, EVIOCGRAB, &grab);
 * `EVIOCGRAB` is a predefined kernel constant
 * `&grab` means we are passing the address of value `1` allocated on stack
 
+</v-clicks>
+
+<v-click>
+
 Let's try to use it
 
-</v-clicks>
+</v-click>
+
+<!-- 
+
+Here's an snippet showing how to use EVIOCGRAB in C
+
+We'll shortly write the same in Scala
+
+ -->
+
 
 ---
 
@@ -337,7 +399,7 @@ Let's try to use it
 First we need to find the device ID 
 
 ```diff {1|2|3|*}
-$ lsusb > /tmp/devices-before # run this before plugging the keyboard
+$ lsusb > /tmp/devices-before # run this before plugging in the keyboard
 $ lsusb > /tmp/devices-after  # run when keyboard has been plugged
 $ diff /tmp/devices-before /tmp/devices-after
 20a21
@@ -348,10 +410,18 @@ $ diff /tmp/devices-before /tmp/devices-after
 
 **Found it!**
 
+Allow me to introduce
+
 </v-click>
 
+<!-- 
+
+It has presented itself as...
+
+ -->
+
 ---
-background: bond.jpg
+background: /bond.jpg
 ---
 
 <div class="absolute top-30 right-8 text-right text-5xl">
@@ -370,7 +440,7 @@ background: bond.jpg
 
 # Detect the macropad
 
-```
+```bash {1,2,11,12}{lines:false}
 $ lsusb -d 514c:8851 -v
 Bus 003 Device 016: ID 514c:8851 c̪USB Keyboardȉ USB Keyboardȉ
 Device Descriptor:
@@ -394,6 +464,8 @@ Device Descriptor:
     wTotalLength       0x0042
 ```
 
+<!-- They will help us find the file to read form -->
+
 ---
 
 # Detect the input device
@@ -415,7 +487,7 @@ VENDOR="514c"; PRODUCT="8851"; for ev in /dev/input/event*; do udevadm info -q p
 <!-- VENDOR="514c"; PRODUCT="8851"; for ev in /dev/input/event*; do udevadm info -q property -n "$ev" | grep -q "ID_VENDOR_ID=${VENDOR}" && udevadm info -q property -n "$ev" | grep -q "ID_MODEL_ID=${PRODUCT}" && echo "$ev"; done -->
 
 
-```shell
+```shell {1,2,4,7}
 VENDOR="514c"
 PRODUCT="8851"
 for ev in /dev/input/event*; do
@@ -440,6 +512,14 @@ Or something similar, depending on USB port
 
 </v-click>
 
+<!-- 
+
+Here's a simple bash snippet that looks up all `/dev/input/event*` files and checks which device has registered it
+
+we iterate over all of them and print only the ones exposed by the device matching VENDOR and PRODUCT
+
+ -->
+
 ---
 layout: center
 ---
@@ -462,8 +542,8 @@ todo - code walkthrough
 
 <v-clicks>
 
-1. We know how to block (grab) the device for the rest of the OS
-2. Which file represents the input stream
+1. We know how to block (grab) the device for the rest of the OS with C API
+2. We know how to find the relevant input files
 
 </v-clicks>
 
@@ -475,7 +555,7 @@ Now it's just the matter of connecting it all together
 
 ---
 layout: center
-background: plan.jpg
+background: /plan.jpg
 ---
 
 # The plan
@@ -498,7 +578,7 @@ background: plan.jpg
 
 # Meet Scala Native
 
-```scala
+```scala {1|2|6-9}{lines:true}
 //> using platform native
 //> using dep org.typelevel::cats-effect::3.7.0-RC1
 
@@ -509,6 +589,12 @@ object App extends IOApp {
     IO.println("Hello!").as(ExitCode.Success)
 }
 ```
+
+<!-- 
+
+Show of hands - have you used Scala | Scala.js | Scala Native? 🤚
+
+ -->
 
 <v-click>
 
@@ -537,40 +623,67 @@ layout: two-cols-header
 Remember him?
 
 ```cpp
-int grab = 1;
-ioctl(fd, EVIOCGRAB, &grab);
+int main() {
+  int fd = open("/dev/input/event0", O_RDONLY);
+  int grab = 1;
+  ioctl(
+    fd,
+    EVIOCGRAB,
+    &grab
+  );
+  // close and return 0
+}
+```
+
+::right::
+
+---
+layout: two-cols-header
+---
+
+# Grabber
+
+::left::
+
+Remember him?
+
+```cpp
+int main() {
+  int fd = open("/dev/input/event0", O_RDONLY);
+  int grab = 1;
+  ioctl(
+    fd,
+    EVIOCGRAB,
+    &grab
+  );
+  // close and return 0
+}
 ```
 
 ::right::
 
 
-<v-click>
-
 This is him now
 
-```scala {5-9}{lines: true}
-object Grabber {
-  import scala.scalanative.posix
-  private val EVIOCGRAB: CLongInt = 0x40044590
-
-  def grab(fd: FileDescriptor): IO[Int] = IO.delay {
-    val grabValue = stackalloc[Byte]()  // Allocate space for a CByte
-    !grabValue = 1.toByte // Set the allocated memory to 1
-    posix.sys.ioctl.ioctl(fd.value.get, EVIOCGRAB, grabValue)
-  }
-
+```scala {*}{lines: true}
+def grab(fd: FileDescriptor): IO[Int] = IO.delay {
+  val grabValue = stackalloc[Byte]()
+  !grabValue = 1.toByte
+  posix.sys.ioctl.ioctl(
+    fd.value.get,
+    EVIOCGRAB,
+    grabValue
+  )
 }
 ```
-
-</v-click>
 
 ---
 
 # Grabber
 
-With release logic
+In full context, with release logic
 
-```scala {11-15}{lines: true}
+```scala {5-9|11-15}{lines: true}
 object Grabber {
   import scala.scalanative.posix
   private val EVIOCGRAB: CLongInt = 0x40044590
@@ -590,13 +703,19 @@ object Grabber {
 }
 ```
 
+<!-- 
+
+It could be refactored further, it just made more sense for the slide to keep it separate
+
+ -->
+
 ---
 
 # Grabber
 
 and a small hack
 
-```scala {5|7-11}{lines: true}
+```scala {5}{lines: true}
 extension (fd: FileDescriptor) {
   // File descriptor doesn't give access to the int value
   // but leaks it in toString: FileDescriptor(33, readOnly=true)
@@ -611,6 +730,15 @@ extension (fd: FileDescriptor) {
 
 }
 ```
+
+<!-- 
+
+The *ioctl* function operates on *fd* which is an integer representing file descriptor
+
+Java-compatible *FileDescriptor* doesn't provide that raw value but knows it, so we do a hack to extract it
+
+Related disco https://discord.com/channels/632150470000902164/635668881951686686/1430175884005998673
+ -->
 
 ---
 
@@ -665,7 +793,7 @@ struct input_event {
 # Event Interface
 
 
-```scala {1|9-17|2-3|*}{lines: true}
+```scala {1|2-3|9-17|*}{lines: true}
 case class InputEvent(sec: Long, usec: Long, eventType: Int, code: Int, value: Int) {
   val isKeyPress = eventType == EV_KEY && value == 1
   val isKeyRelease = eventType == EV_KEY && value == 0 
@@ -686,6 +814,14 @@ object InputEvent {
     
 }
 ```
+
+<!-- 
+
+We model the InputEvent case class following the docs, un-nesting the time to *sec* and *usec*
+
+We hard-code the event size to 24 bytes following the C structure size, read the sequence of bytes and construct the case class instance out of it
+ -->
+
 
 ---
 
@@ -725,21 +861,45 @@ object InputReader {
 }
 ```
 
+
+<!-- 
+
+1. Opening a device yields FileDescriptor (for grabber) and InputStream for the client to consume
+
+2. File input stream is an autoclosable resource of input stream
+
+3. for input events we perform *readInputStream* from FS2, making sure the read chunk is the right size. In line 16 we disallow smaller chunks as they make no sense to us. The *closeAfterUse* is false because we delegate closing file to the separate resource
+
+
+ -->
+
 ---
 layout: center
-background: handshake.jpg
+background: /handshake.jpg
 ---
 
 # Plan complete
 
 Now join the building blocks together
 
+<!-- 
+
+The project is set up for scala native
+
+Grabber is implemented using POSIX APIs
+
+Events are modelled
+
+Instrumentation for opening the file (retaining FD) and streaming events is there
+
+ -->
+
 
 ---
 
 # Macropad
 
-```scala {1-3|8-14}{lines: true}
+```scala {1-3|10-13|7-14}{lines: true}
 trait Macropad {
   def grabKeyboardEventsStream: Resource[IO, Stream[IO, InputEvent]]
 }
@@ -748,21 +908,28 @@ object Macropad {
 
   def make(path: String): Macropad = 
     new Macropad {
-      def grabKeyboardEventsStream: Resource[IO, Stream[IO, InputEvent]] = {
+      def grabKeyboardEventsStream: Resource[IO, Stream[IO, InputEvent]] = 
         for {
           (fd, stream) <- InputReader.openDevice(Paths.get(path))
           _            <- Grabber.resource(fd)
         } yield stream
-      }
     }
 }
 ```
+
+<!-- 
+
+1. Let's write some nice high level API
+
+2. See how we neatly compose two internal api calls, fd is captured by grabber, the stream is returned to the user. Upon closing the resource stream is closed, grabber is released and file is closed, all in those 2 lines
+
+ -->
 
 ---
 
 # Main application
 
-```scala {3-4|7-17|13|*}{lines: true}
+```scala {3-4|7-9|10-17|13|*}{lines: true}
 object App extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val defaultPath = "/dev/input/event11"
@@ -785,11 +952,23 @@ object App extends IOApp {
 }
 ```
 
+<!-- 
+
+Here goes the main executable application
+
+1. Macropad instance is created using our high level api, *grabKeyboardEventsStream* is used for obtaining the event stream
+
+2. The resource is acquired and the stream is extended with logging and event handling
+
+3. Closer look at event handling
+
+ -->
+
 ---
 
 # Main application
 
-```scala {4-9|12-13,15-16|*}{lines: true}
+```scala {4-9|5-6|7-8|12-13,15-16|*}{lines: true}
 object App extends IOApp {
   def run(args: List[String]): IO[ExitCode] = ???
 
@@ -811,6 +990,12 @@ object App extends IOApp {
     IO.delay(os.call(cmd)).void
 }
 ```
+
+---
+layout: center
+---
+
+# Let's run it! 🚀
 
 ---
 
@@ -844,9 +1029,41 @@ Found event: InputEvent(1761481198,466345,1,2,0)
 
 # Stream visualization
 
-For single key press
 
-<img class="w-200" alt="" src="./aquascape-short.png" />
+<img class="h-60" alt="" src="./aquascape-short.png" />
+
+
+```scala {3-6}{lines:true}
+Macropad.make(path).grabKeyboardEventsStream
+  .use { stream =>
+    stream
+      .evalTap(event => IO.println(s"Found event: $event"))
+      .evalTap(handleEvent)
+      .compile
+      .drain
+  }
+```
+
+<!-- 
+
+From line 6 upwards
+
+1. The full stream is constructed and it pulls on *handleEvent* to produce value
+
+2. It's ready to process event, so it pulls on the macropad events for one event
+
+3. Macropad events first have nothing, we're wating some time for user input
+
+4. User presses a key, some events (more than one!) are available
+
+5. *handleEvent* processes the first event, it's not useful so we ignore it
+
+6. Composed stream finished processing the first value, proceeds to the next one
+
+
+
+ -->
+
 ---
 
 # Stream visualization
@@ -854,6 +1071,20 @@ For single key press
 Ignored key, then volume down
 
 <img alt="" src="./aquascape-long.png" />
+
+This effectively goes forever as long as the program is running
+
+---
+
+# Key takeaways
+
+* Scala Native is perfect for low level OS integrations
+<v-clicks>
+
+* The ecosystem is pretty stable
+* When buying a macropad do your research 🕵️
+
+</v-clicks>
 
 ---
 layout: two-cols-header
@@ -870,18 +1101,6 @@ https://github.com/polyvariant/macropad4s
 ::right::
 
 ![](./repo-qr.png)
-
----
-
-# Key takeaways
-
-* Scala Native is perfect for low level OS integrations
-<v-clicks>
-
-* The ecosystem is mature enough
-* When buying a macropad do your research 🕵️
-
-</v-clicks>
 
 
 ---
@@ -902,3 +1121,12 @@ class: "outro-slide"
 
 <logos-bluesky mt-2/> [@michal.pawlik.dev](https://bsky.app/profile/michal.pawlik.dev)<br/>
 <grommet-icons-blog/> [blog.michal.pawlik.dev](https://blog.michal.pawlik.dev)
+
+<br/>
+<br/>
+
+<v-click>
+
+### Questions?
+
+</v-click>
