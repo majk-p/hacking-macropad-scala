@@ -578,10 +578,10 @@ background: /plan.jpg
 
 # Meet Scala Native
 
-```scala {1|2|6-9}{lines:true}
+```scala {1|2|7-8}{lines:true}
 //> using platform native
 //> using dep org.typelevel::cats-effect::3.7.0-RC1
-
+package org.polyvariant.macropad4s
 import cats.effect.{IO, IOApp, ExitCode}
 
 object App extends IOApp {
@@ -613,6 +613,24 @@ Produces runnable binary `org.polyvariant.macropad4s.App`
 </v-click>
 
 ---
+
+# The plan
+
+1. ✅ Scala Native hello world for a warmup
+2. `Grabber` class to implement the `ioctl(fd, EVIOCGRAB, &grab);` for **capturing device events**
+3. Model the `InputEvent` to read from the `/dev/input/eventN` file
+4. Nice fs2 stream to process the events from file
+
+<!-- 
+
+Warmup done now let's get our hands dirty
+
+Now we'll be using the powers of Scala Native to invoke native C apis
+
+ -->
+
+
+---
 layout: two-cols-header
 ---
 
@@ -647,7 +665,7 @@ layout: two-cols-header
 
 Remember him?
 
-```cpp
+```cpp {3-8}
 int main() {
   int fd = open("/dev/input/event0", O_RDONLY);
   int grab = 1;
@@ -665,11 +683,11 @@ int main() {
 
 This is him now
 
-```scala {*}{lines: true}
+```scala {2-8}{lines: true}
 def grab(fd: FileDescriptor): IO[Int] = IO.delay {
   val grabValue = stackalloc[Byte]()
   !grabValue = 1.toByte
-  posix.sys.ioctl.ioctl(
+  ioctl(
     fd.value.get,
     EVIOCGRAB,
     grabValue
@@ -929,7 +947,7 @@ object Macropad {
 
 # Main application
 
-```scala {3-4|7-9|10-17|13|*}{lines: true}
+```scala {3-4|7-9|10-17|13}{lines: true}
 object App extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val defaultPath = "/dev/input/event11"
@@ -1001,7 +1019,7 @@ layout: center
 
 # Run it! 🚀
 
-```scala
+```scala {1,2,3,4,11,18}
 $ sudo -E ./org.polyvariant.macropad4s.App /dev/input/event25
 Running keyboard grabber! List(/dev/input/event25)
 Found event: InputEvent(1761481196,302464,4,4,458756)
@@ -1076,13 +1094,39 @@ This effectively goes forever as long as the program is running
 
 ---
 
+# Processing sequences
+
+```scala {6-8}{lines:true}
+Macropad
+  .make(path)
+  .grabKeyboardEventsStream
+  .use { stream =>
+    stream
+      .groupWithin(Int.MaxValue, 1.second)
+      .evalTap(chunk => IO.println(s"Found events: $chunk"))
+      .evalTap(handleEvents) // processes Chunk[InputEvent]
+      .compile
+      .drain
+  }
+  .as(ExitCode.Success)
+```
+
+<v-click>
+
+<img class="absolute bottom-0 right-0 w-220" src="./aquascape-window.png" />
+
+</v-click>
+
+---
+
 # Key takeaways
 
 * Scala Native is perfect for low level OS integrations
 <v-clicks>
 
 * The ecosystem is pretty stable
-* When buying a macropad do your research 🕵️
+* Use fs2 for stream processing if you haven't already
+* When buying a macropad - do your research 🕵️
 
 </v-clicks>
 
@@ -1120,7 +1164,8 @@ class: "outro-slide"
 ## Stay in touch! ✉️
 
 <logos-bluesky mt-2/> [@michal.pawlik.dev](https://bsky.app/profile/michal.pawlik.dev)<br/>
-<grommet-icons-blog/> [blog.michal.pawlik.dev](https://blog.michal.pawlik.dev)
+<grommet-icons-blog/> [blog.michal.pawlik.dev](https://blog.michal.pawlik.dev)<br/>
+<logos-linkedin/> [Michał Pawlik](https://www.linkedin.com/in/michał-pawlik)
 
 <br/>
 <br/>
