@@ -132,9 +132,10 @@ layout: two-cols-header
 
 <v-clicks>
 
-1. Connect the device
-2. Use provided software to assign keypress sequence to buttons (e.g. first key sends `CTR+ALT+DEL`)
-3. Configure your OS to perform certain actions upon key sequence
+1. Download manufacturer software
+2. Connect the device
+3. Use provided software to assign keypress sequence to buttons (e.g. first key sends `CTR+ALT+DEL`)
+4. Configure your OS to perform certain actions upon key sequence
 
 </v-clicks>
 
@@ -269,6 +270,8 @@ layout: center
 
 That's the **real life recording** of my attempting to use software from those threads
 
+- At this point i connected the device to a spare laptop I and sniffed the traffic, nothing sus there as well
+
 Numerous issues, but the biggest issue was the fact that particular keyboard can come with various device-id & vendor-id, meaning that programming it needs different set of commands sent to the device.
 
 - Identically looking keyboards report as totally different vendor-id/product-id
@@ -276,6 +279,7 @@ Numerous issues, but the biggest issue was the fact that particular keyboard can
 - I would have to run and reverse-engineer the provided software to first find the right commands, then reproduce that comms in my program (or the forked project)
 
 This breaks the rule of not using the sus software though
+
 
  -->
 
@@ -301,7 +305,7 @@ layout: two-cols-header
 <v-clicks>
 
 - We could just have a program that reacts directly to the keyboard input events
-- And make the system ignore the input everywhere else outside our program
+- And make the system ignores the input everywhere else outside our program
 
 </v-clicks>
 
@@ -725,6 +729,8 @@ object Grabber {
 
 It could be refactored further, it just made more sense for the slide to keep it separate
 
+**Notice** fileDescriptor.value.get
+
  -->
 
 ---
@@ -1116,6 +1122,12 @@ Macropad
 <img class="absolute bottom-0 right-0 w-220" src="./aquascape-window.png" />
 
 </v-click>
+
+---
+layout: center
+---
+
+# Mission accomplished! 🚀
 
 ---
 
