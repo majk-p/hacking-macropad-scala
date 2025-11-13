@@ -108,9 +108,9 @@ layout: two-cols-header
 
 ::left::
 
-<img class="w-60" alt="" src="./macropad-big.png" />
+<img class="w-60" alt="" src="/macropad-big.png" />
 
-<img class="w-60" alt="" src="./macropad.png" />
+<img class="w-60" alt="" src="/macropad.png" />
 
 ::right::
 
@@ -141,7 +141,7 @@ layout: two-cols-header
 
 ::right::
 
-<img class="w-80" alt="" src="./macropad.png" />
+<img class="w-80" alt="" src="/macropad.png" />
 
 ---
 layout: two-cols-header
@@ -153,11 +153,11 @@ layout: two-cols-header
 
 ::left::
 
-<img class="h-80" alt="" src="./user-manual-front.jpg" />
+<img class="h-80" alt="" src="/user-manual-front.jpg" />
 
 ::right::
 
-<img class="w-90" alt="" src="./user-manual-download.jpg" />
+<img class="w-90" alt="" src="/user-manual-download.jpg" />
 
 <!-- 
 
@@ -173,7 +173,7 @@ I usually don't read them, but since this one contained a link and a QR code I *
 
 # Security warning 😎
 
-<img alt="" src="./software-zoom.png" />
+<img alt="" src="/software-zoom.png" />
 
 <!-- For the right reasons! -->
 
@@ -196,11 +196,11 @@ layout: two-cols-header
 
 ::left::
 
-<img class="h-100" alt="" src="./macropad-dissassembly-1.jpg" />
+<img class="h-100" alt="" src="/macropad-dissassembly-1.jpg" />
 
 ::right::
 
-<img class="w-150" alt="" src="./macropad-dissassembly-2.jpg" />
+<img class="w-150" alt="" src="/macropad-dissassembly-2.jpg" />
 
 
 <v-click>
@@ -247,7 +247,7 @@ Community tooling alternatives
 * https://github.com/rOzzy1987/MacroPad
 
 ::right::
-<img class="h-120" alt="" src="./reddit-thread.png" />
+<img class="h-120" alt="" src="/reddit-thread.png" />
 
 <!-- 
 
@@ -264,7 +264,7 @@ layout: center
 
 # Me trying to use community alternatives
 
-<img class="h-100" alt="" src="./family-guy.gif" />
+<img class="h-100" alt="" src="/family-guy.gif" />
 
 <!-- 
 
@@ -297,7 +297,7 @@ layout: two-cols-header
 
 ::left::
 
-<img class="w-100" alt="" src="./what-if-i-told-you.jpg" />
+<img class="w-100" alt="" src="/what-if-i-told-you.jpg" />
 
 ::right::
 
@@ -1054,7 +1054,7 @@ Found event: InputEvent(1761481198,466345,1,2,0)
 # Stream visualization
 
 
-<img class="h-60" alt="" src="./aquascape-short.png" />
+<img class="h-60" alt="" src="/aquascape-short.png" />
 
 
 ```scala {3-6}{lines:true}
@@ -1094,7 +1094,7 @@ From line 6 upwards
 
 Ignored key, then volume down
 
-<img alt="" src="./aquascape-long.png" />
+<img alt="" src="/aquascape-long.png" />
 
 This effectively goes forever as long as the program is running
 
@@ -1119,7 +1119,7 @@ Macropad
 
 <v-click>
 
-<img class="absolute bottom-0 right-0 w-220" src="./aquascape-window.png" />
+<img class="absolute bottom-0 right-0 w-220" src="/aquascape-window.png" />
 
 </v-click>
 
@@ -1156,7 +1156,7 @@ https://github.com/polyvariant/macropad4s
 
 ::right::
 
-![](./repo-qr.png)
+![](/repo-qr.png)
 
 
 ---
@@ -1168,7 +1168,7 @@ class: "outro-slide"
 
 ::left::
 
-<img class="w-70" alt="" src="./michal_pawlik.jpg" />
+<img class="w-70" alt="" src="/michal_pawlik.jpg" />
 
 ::right::
 
